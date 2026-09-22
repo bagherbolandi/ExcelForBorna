@@ -1,0 +1,16 @@
+Test_ID,Input,Expected_Result,Actual_Result,Pass_Fail,Issue,Executed_Date,By
+T1,Order ORD-2026-00321 کامل,Ready_Flag=READY؛ تصویب مشروط مدیریت,"Ready=READY, Decision=APPROVED WITH CONDITION",PASS,,2026-09-22,USR-09
+T2,Order ناقص ORD-2026-00323 (بدون تحویل/پرداخت),Ready_Flag=INCOMPLETE + Issue ثبت‌شده,Ready=INCOMPLETE,PASS,,2026-09-22,USR-09
+T3,Revision جدید R05 بالای R04,R05 فعال و R04 حفظ شود (بدون Overwrite),"R05@3, R04@4",PASS,,2026-09-22,USR-09
+T4,"قیمت شفت R01→R02 (2,200,000→2,450,000/kg)","Landed جدید 2,450,000 (Revision حفظ)",Landed=2450000.0,PASS,,2026-09-22,USR-09
+T5,مقدار سفارش PRD-000125: 2→3,Required_Qty از 378 → 567 (×1.5),378.0 → 567.0,PASS,,2026-09-22,USR-09
+T6,مدت اعتبار 60→90 روز,Financial_Adjustment افزایش یابد,163118025.0 → 244677037.0,PASS,,2026-09-22,USR-09
+T7,Decision=RETURN FOR REVISION,Quotation=Returned + Issue باز,Decision=RETURN FOR REVISION,PASS,,2026-09-22,USR-09
+T8,Decision=REJECTED,پیشنهاد رد و بسته شود,Decision=REJECTED,PASS,,2026-09-22,USR-09
+T9,Decision=APPROVED,APPROVED + Workflow_History,Decision=APPROVED,PASS,,2026-09-22,USR-09
+T10,تغییر پس از Approval (Qty),Revision جدید + Approval قبلی حفظ (سیاست RV-01),Change_Log رکورد: 3,PASS,,2026-09-22,USR-09
+T11,Valid_To در گذشته (PPR-000559),"Expired_Flag=1 و Costing از R02 (2,450,000)","Flag=1.0, Shaft_Unit=2450000.0",PASS,,2026-09-22,USR-09
+T12,فعالیت Engineering پروژه دوم معوق,Delay_Days>0 و Issue باز,"تأخیرها: [(13, 21.0)]",PASS,,2026-09-22,USR-09
+T13,Actual(9.06B) ≠ Budget(5.55B),Variance_Total ≠ 0,Variance=3512112475.0,PASS,,2026-09-22,USR-09
+T14,Order_ID تکراری اضافه شد,Error_Checks DK-01 = ERROR,DK-01 = 'ERROR',PASS,,2026-09-22,USR-09
+T15,BOM Revision جدید بعد از Costing,"Costing مجدد لازم + نسخه قبلی حفظ (R04,R05)","Revisions=['R04', 'R05'], Change_Log=yes",PASS,,2026-09-22,USR-09
