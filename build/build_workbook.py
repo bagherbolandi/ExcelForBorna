@@ -208,9 +208,9 @@ ROLE_NAMES = {"INTAKE": "واحد ثبت سفارش", "PM": "مدیر پروژه
 ACCESS = {
     "راهنما":      {r: "R" for r in ROLE_CODES},
     "ورود":        {r: "R" for r in ROLE_CODES},
-    "شناسنامه":    {"INTAKE": "W", "PM": "W", "ENG": "R", "FIN": "R", "SALES": "R", "CEO": "R",
+    "شناسنامه":    {"INTAKE": "W", "PM": "R", "ENG": "R", "FIN": "R", "SALES": "R", "CEO": "R",
                     "TRD_IN": "-", "TRD_EX": "-", "PLAN": "-", "ADMIN": "R"},
-    "امکان‌سنجی":  {"PM": "W", "ENG": "W", "FIN": "W", "CEO": "R", "SALES": "R",
+    "امکان‌سنجی":  {"PM": "W", "ENG": "R", "FIN": "R", "CEO": "R", "SALES": "R",
                     "INTAKE": "R", "TRD_IN": "R", "TRD_EX": "R", "PLAN": "-", "ADMIN": "R"},
     "گانت":        {"PM": "W", "ENG": "R", "TRD_IN": "R", "TRD_EX": "R", "PLAN": "R",
                     "FIN": "R", "SALES": "R", "CEO": "R", "INTAKE": "R", "ADMIN": "R"},
@@ -232,7 +232,7 @@ ACCESS = {
                     "SALES": "R", "INTAKE": "-", "CEO": "R", "ADMIN": "R"},
     "تصویب":       {"CEO": "W", "PM": "R", "INTAKE": "-", "ENG": "-", "TRD_IN": "-", "TRD_EX": "-",
                     "PLAN": "-", "FIN": "-", "SALES": "-", "ADMIN": "R"},
-    "هزینه‌واقعی": {"FIN": "W", "PM": "W", "CEO": "R", "ENG": "R", "PLAN": "R",
+    "هزینه‌واقعی": {"FIN": "W", "PM": "R", "CEO": "R", "ENG": "R", "PLAN": "R",
                     "TRD_IN": "-", "TRD_EX": "-", "SALES": "-", "INTAKE": "-", "ADMIN": "R"},
     "ریسک":        {"PM": "W", "ENG": "R", "TRD_IN": "R", "TRD_EX": "R", "PLAN": "R", "FIN": "R",
                     "SALES": "R", "INTAKE": "R", "CEO": "R", "ADMIN": "R"},
@@ -250,6 +250,17 @@ TAB_COLORS = {"راهنما": "808080", "ورود": "1F3864", "شناسنامه"
 
 UNITS = ["واحد ثبت سفارش", "مدیر پروژه", "مهندسی", "بازرگانی داخلی", "بازرگانی خارجی",
          "برنامه‌ریزی و انبار", "مالی", "فروش", "مدیریت ارشد"]
+
+DEPTS = [  # (کلید, پوشه نسبی, فایل فرم واحد, ستون‌های ماتریسِ نقش‌های این واحد)
+    ("INTAKE", "01_INTAKE", "Form_INTAKE.xlsx", "B"),
+    ("ENG",    "02_ENG",    "Form_ENG.xlsx",    "D"),
+    ("TRD",    "03_TRD",    "Form_TRD.xlsx",    "E,F"),
+    ("PLAN",   "04_PLAN",   "Form_PLAN.xlsx",   "G"),
+    ("FIN",    "05_FIN",    "Form_FIN.xlsx",    "H"),
+    ("SALES",  "06_SALES",  "Form_SALES.xlsx",  "I"),
+    ("EXEC",   "07_EXEC",   "Form_EXEC.xlsx",   "J"),
+]
+DEPT_TOKENS = {d[0]: f"Brn@{d[0]}-1405!" for d in DEPTS}
 
 USERS = [  # (username, password, full name, role code)
     ("safa",  "Borna-Intake1", "صفا احمدی — واحد بازاریابی/ثبت سفارش", "INTAKE"),
@@ -448,6 +459,18 @@ for i, (nm, (lab, vals)) in enumerate(lists.items()):
 put(ws, row0 + len(lists) + 1, 1, "راهنمای ماکرو: پس از نصب ماکرو، برای ورود کلیدهای Alt+F8 و اجرای Borna_Login را بزنید. خروج: Borna_Logout. ورود اضطراری مدیر سیستم: Borna_Admin.",
     f=font(9, True, NAVY), fl=pfill(NOTE_F))
 merge(ws, row0 + len(lists) + 1, 1, row0 + len(lists) + 1, 12)
+P_CONN = row0 + len(lists) + 3
+section(ws, P_CONN - 1, 1, 6, "اتصالات حالت شبکه‌ای (چندفایلی) — Borna_Publish / Borna_Collect در ماژول modBornaSplit")
+header_row(ws, P_CONN, 1, ["واحد (پوشه)", "فایل فرم واحد", "توکن رمز فایل واحد", "آخرین انتشار", "آخرین دریافت", "ستون‌های ماتریس نقش‌ها"], height=22)
+for i, (dk, folder, fname, cols) in enumerate(DEPTS):
+    rr = P_CONN + 1 + i
+    put(ws, rr, 1, folder, f=font(9, True, NAVY), a=CENTER)
+    put(ws, rr, 2, fname, f=font(9), a=CENTER)
+    put(ws, rr, 3, DEPT_TOKENS[dk], f=font(9), a=CENTER, fl=pfill(AMBER))
+    put(ws, rr, 4, None, f=font(8.5), a=CENTER, num="yyyy/mm/dd hh:mm")
+    put(ws, rr, 5, None, f=font(8.5), a=CENTER, num="yyyy/mm/dd hh:mm")
+    put(ws, rr, 6, cols, f=font(9), a=CENTER)
+CONN = {"hdr": P_CONN, "first": P_CONN + 1, "last": P_CONN + len(DEPTS)}
 
 # ----------------------------------------------------------------------------
 # شناسنامه (intake / project charter)
@@ -1538,7 +1561,8 @@ section(ws, 8, 1, 8, "راهنمای اجرا (پس از نصب ماکرو)")
 steps = ["۱) نام کاربری و رمز را وارد کنید (جدول کاربران در برگه تنظیمات).",
          "۲) کلیدهای Alt+F8 → ماژول Borna_Login → Run.",
          "۳) برای خروج: Alt+F8 → Borna_Logout. ورود اضطراری مدیر سیستم: Borna_Admin.",
-         "۴) در صورت نصب نبودن ماکرو: فایل بدون محدودیت دید باز می‌شود؛ ویرایش همچنان با قفل شیت محدود است."]
+         "۴) در صورت نصب نبودن ماکرو: فایل بدون محدودیت دید باز می‌شود؛ ویرایش همچنان با قفل شیت محدود است.",
+         "۵) حالت شبکه‌ای چندفایلی (توصیه سازمانی): ماژول modBornaSplit را هم ایمپورت کنید؛ چرخهٔ مدیر پروژه: Borna_Collect ← ورودی واحدها، Borna_Publish → تازه‌سازی فایل واحدها (یا Borna_Sync)."]
 for i, s_ in enumerate(steps):
     put(ws, 9 + i, 1, s_, f=font(9.5), fl=pfill(NOTE_F), bd=True)
     merge(ws, 9 + i, 1, 9 + i, 8)
@@ -1602,7 +1626,7 @@ guide_lines = [
 sh_desc = [
     ("راهنما", "راهنما و استانداردها", "همه"),
     ("ورود", "دروازه احراز هویت نقش", "همه"),
-    ("شناسنامه", "ثبت سفارش/ایده + وضعیت پرونده", "واحد ثبت سفارش / مدیر پروژه"),
+    ("شناسنامه", "ثبت سفارش/ایده + وضعیت پرونده", "واحد ثبت سفارش"),
     ("امکان‌سنجی", "امتیازدهی Five-Case و گیت ۱", "مدیر پروژه (با همکاری واحدها)"),
     ("گانت", "WBS، مبنای زمان، پیشرفت واقعی، بازنگری", "مدیر پروژه"),
     ("داشبورد", "KPI، منحنی S، نمودارها، چک‌لیست گردش", "همه"),
@@ -1614,7 +1638,7 @@ sh_desc = [
     ("فروش", "قیمت نهایی و شرایط پرداخت", "فروش"),
     ("جمع‌بندی", "بسته گزارش مدیر پروژه به مدیرعامل", "مدیر پروژه"),
     ("تصویب", "تصمیم گیت نهایی (Stage-Gate)", "مدیریت ارشد"),
-    ("هزینه‌واقعی", "دفتر هزینه واقعی (مبنای CPI)", "مالی / مدیر پروژه"),
+    ("هزینه‌واقعی", "دفتر هزینه واقعی (مبنای CPI)", "مالی"),
     ("ریسک", "ثبت، امتیاز و پایش ریسک", "مدیر پروژه + واحدها"),
     ("تغییرات", "ثبت و کنترل تغییرات (CR)", "مدیر پروژه"),
     ("تقویم", "جدول تبدیل تاریخ (منبع فرمول‌ها)", "محرکه — ویرایش نشود"),
@@ -1734,6 +1758,18 @@ for _ws in wb.worksheets:
 assert not bad_cells, f"unbalanced formulas: {bad_cells[:10]}"
 print("formula integrity OK")
 
+import json
 wb.save(args.out)
+meta = {
+    "sheet_order": SHEET_ORDER, "access": {k: dict(v) for k, v in ACCESS.items()},
+    "depts": [[a, b, c, d] for a, b, c, d in DEPTS], "dept_tokens": DEPT_TOKENS,
+    "grid": {"year": GRID_YEAR, "days": GRID_DAYS},
+    "cal": {"first_row": CAL_HDR + 1, "last_row": CAL_LAST},
+    "settings": {"u_rows": list(U_ROWS), "hol_rows": list(HOL_ROWS), "conn": CONN},
+    "list_ranges": {k: list(v) for k, v in LIST_RANGES.items()},
+    "pwd_user": PWD_USER, "pwd_structure": PWD_STRUCTURE,
+}
+with open(args.out + ".meta.json", "w", encoding="utf-8") as fh:
+    json.dump(meta, fh, ensure_ascii=False, indent=1)
 print("saved:", args.out)
 print("sheets:", len(SHEET_ORDER), "| grid cols:", GRID_DAYS, "| cal rows:", cal_n)

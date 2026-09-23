@@ -1,0 +1,9 @@
+رمز قفل فایل هر واحد (توکن) — فقط در اختیار IT و PMO:
+  INTAKE  Brn@INTAKE-1405!
+  ENG     Brn@ENG-1405!
+  TRD     Brn@TRD-1405!
+  PLAN    Brn@PLAN-1405!
+  FIN     Brn@FIN-1405!
+  SALES   Brn@SALES-1405!
+  EXEC    Brn@EXEC-1405!
+ساختار: icacls برای گروه Borna-<DEPT> = Modify روی پوشه خودش و Read روی پوشه‌های دیگر ممنوع؛ Borna-PMO = Modify روی همه + master؛ دستور آماده: tools/deploy_acl.ps1

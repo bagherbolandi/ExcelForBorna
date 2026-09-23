@@ -13,11 +13,16 @@ Practice Standard for Scheduling، GAO-16-32G، HM Treasury Five-Case و ISO 215
 
 ```
 ├── out/Project_Management_Borna.xlsx   خروجی: ۱۹ شیت، فرمول‌های لینک‌شده، گانت شمسی، داشبورد
+├── out/split/                          فایل مستقل هر واحد (حالت شبکه‌ای — دسترسی واقعی با NTFS)
+│   ├── 01_INTAKE…07_EXEC/Form_*.xlsx   فرم ورودی + اسنپ‌شات فقط‌خواندنی بالادستی (بدون ماکرو)
+│   └── _ACL_HINTS.txt                  توکن قفل فایل هر واحد (فقط IT/PMO)
 ├── build/
-│   ├── build_workbook.py               مولد کامل فایل (تک‌اسکریپت، قابل بازتولید)
+│   ├── build_workbook.py               مولد کامل فایل مادر (تک‌اسکریپت، قابل بازتولید)
+│   ├── split_deploy.py                 تولید فایل واحدها از مادر + meta (اسنپ‌شات با موتور فرمول)
 │   └── check_workbook.py               اعتبارسنجی ساختاری + فهارس
 ├── vba/
-│   ├── modBorna.bas                    ورود/خروج + اعمال ماتریس دسترسی هر نقش
+│   ├── modBorna.bas                    ورود/خروج + اعمال ماتریس دسترسی هر نقش (روی مادر)
+│   ├── modBornaSplit.bas               Borna_Collect/Publish/Sync/Setup برای حالت چندفایلی
 │   └── ThisWorkbook.txt                هوک Workbook_Open
 ├── docs/
 │   ├── INSTALL.md                      نصب سطح ۱/۲ (اکسل + ماکرو)
@@ -37,10 +42,11 @@ Practice Standard for Scheduling، GAO-16-32G، HM Treasury Five-Case و ISO 215
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-python build/build_workbook.py --out out/Project_Management_Borna.xlsx   # ساخت
+python build/build_workbook.py --out out/Project_Management_Borna.xlsx   # ساخت مادر
 python build/check_workbook.py out/Project_Management_Borna.xlsx         # بررسی ساختاری
 python build/build_workbook.py --year 1406                               # گانت سال دیگر
-python build/build_workbook.py --pwd-user "…" --pwd-structure "…"        # رمزهای یکتای سازمانی
+python build/build_workbook.py --pwd-user "…" --pwd-structure "…"         # رمزهای یکتای سازمانی
+python build/split_deploy.py --master out/Project_Management_Borna.xlsx   # فایل واحدها (حالت شبکه‌ای)
 ```
 
 ## ویژگی‌های کلیدی فایل
@@ -53,9 +59,14 @@ python build/build_workbook.py --pwd-user "…" --pwd-structure "…"        # �
   انبار، بهای تمام‌شده با سربار/ذخیره، قیمت فروش با مالیات/تخفیف/جدول اقساط — همگی فرمولی و لینک‌شده.
 - **داشبورد مدیریتی** — ۱۸ کارت KPI (پیشرفت برنامه‌ای/واقعی، CPI/SPI، حاشیه سود، ریسک‌ها…)،
   منحنی S فازی، نمودار پیشرفت واحدها، بودجه↔واقعی، چک‌لیست گردش فرآیند.
-- **ورود و سطوح دسترسی** — `Borna_Login` (VBA) ماتریس W/R/− را از «تنظیمات» می‌خواند، شیت‌های
-  غیرمجاز مخفی و قفل می‌شوند؛ مدیر پروژه همه را می‌بیند و فقط در بخش‌های خودش می‌نویسد؛
-  مدیرعامل فقط «تصویب». (سقف اکسل = بازدارندگی؛ حفاظت سخت با NTFS — `docs/IT-DEPLOYMENT.md`.)
+- **ورود و سطوح دسترسی — دو مدل**:
+  1. *تک‌فایلی*: `Borna_Login` (VBA) ماتریس W/R/− را از «تنظیمات» می‌خواند؛ شیت‌های غیرمجاز مخفی/قفل
+     می‌شوند؛ **مدیر پروژه همه را می‌بیند و فقط در بخش خودش (گانت/امکان‌سنجی/جمع‌بندی/ریسک/تغییرات)
+     می‌نویسد**؛ مدیرعامل فقط «تصویب».
+  2. *چندفایلیِ شبکه‌ای (دسترسی واقعی)*: `split_deploy.py` برای هر واحد فایل مستقل می‌سازد — فرمول‌های
+     زندهٔ همان واحد + اسنپ‌شات فقط‌خواندنیِ دادهٔ بالادستی؛ سایر داده‌ها فیزیکی در فایل نیست.
+     مرز واقعی را NTFS می‌گذارد (هر واحد فقط پوشهٔ خودش را Modify می‌کند)؛ چرخهٔ همگام‌سازی مادر:
+     `Borna_Collect → Borna_Publish`. جدول کاربران/توکن‌ها در فایل واحدها چاپ نمی‌شود.
 - **فونت Tahoma، چیدمان راست‌به‌چپ، بدون متن مورب** در کل فایل.
 
 ## وضعیت تست (در همین مخزن)

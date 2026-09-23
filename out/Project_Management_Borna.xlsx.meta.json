@@ -1,0 +1,388 @@
+{
+ "sheet_order": [
+  "راهنما",
+  "ورود",
+  "شناسنامه",
+  "امکان‌سنجی",
+  "گانت",
+  "داشبورد",
+  "مهندسی_BOM",
+  "مهندسی_مدارک",
+  "بازرگانی",
+  "برنامه‌ریزی",
+  "مالی",
+  "فروش",
+  "جمع‌بندی",
+  "تصویب",
+  "هزینه‌واقعی",
+  "ریسک",
+  "تغییرات",
+  "تقویم",
+  "تنظیمات"
+ ],
+ "access": {
+  "راهنما": {
+   "INTAKE": "R",
+   "PM": "R",
+   "ENG": "R",
+   "TRD_IN": "R",
+   "TRD_EX": "R",
+   "PLAN": "R",
+   "FIN": "R",
+   "SALES": "R",
+   "CEO": "R",
+   "ADMIN": "R"
+  },
+  "ورود": {
+   "INTAKE": "R",
+   "PM": "R",
+   "ENG": "R",
+   "TRD_IN": "R",
+   "TRD_EX": "R",
+   "PLAN": "R",
+   "FIN": "R",
+   "SALES": "R",
+   "CEO": "R",
+   "ADMIN": "R"
+  },
+  "شناسنامه": {
+   "INTAKE": "W",
+   "PM": "R",
+   "ENG": "R",
+   "FIN": "R",
+   "SALES": "R",
+   "CEO": "R",
+   "TRD_IN": "-",
+   "TRD_EX": "-",
+   "PLAN": "-",
+   "ADMIN": "R"
+  },
+  "امکان‌سنجی": {
+   "PM": "W",
+   "ENG": "R",
+   "FIN": "R",
+   "CEO": "R",
+   "SALES": "R",
+   "INTAKE": "R",
+   "TRD_IN": "R",
+   "TRD_EX": "R",
+   "PLAN": "-",
+   "ADMIN": "R"
+  },
+  "گانت": {
+   "PM": "W",
+   "ENG": "R",
+   "TRD_IN": "R",
+   "TRD_EX": "R",
+   "PLAN": "R",
+   "FIN": "R",
+   "SALES": "R",
+   "CEO": "R",
+   "INTAKE": "R",
+   "ADMIN": "R"
+  },
+  "داشبورد": {
+   "INTAKE": "R",
+   "PM": "R",
+   "ENG": "R",
+   "TRD_IN": "R",
+   "TRD_EX": "R",
+   "PLAN": "R",
+   "FIN": "R",
+   "SALES": "R",
+   "CEO": "R",
+   "ADMIN": "R"
+  },
+  "مهندسی_BOM": {
+   "ENG": "W",
+   "PM": "R",
+   "TRD_IN": "R",
+   "TRD_EX": "R",
+   "PLAN": "R",
+   "FIN": "R",
+   "INTAKE": "-",
+   "SALES": "-",
+   "CEO": "R",
+   "ADMIN": "R"
+  },
+  "مهندسی_مدارک": {
+   "ENG": "W",
+   "PM": "R",
+   "PLAN": "R",
+   "INTAKE": "-",
+   "TRD_IN": "-",
+   "TRD_EX": "-",
+   "FIN": "-",
+   "SALES": "-",
+   "CEO": "-",
+   "ADMIN": "R"
+  },
+  "بازرگانی": {
+   "TRD_IN": "W",
+   "TRD_EX": "W",
+   "PM": "R",
+   "PLAN": "R",
+   "FIN": "R",
+   "ENG": "R",
+   "INTAKE": "-",
+   "SALES": "-",
+   "CEO": "R",
+   "ADMIN": "R"
+  },
+  "برنامه‌ریزی": {
+   "PLAN": "W",
+   "PM": "R",
+   "TRD_IN": "R",
+   "TRD_EX": "R",
+   "FIN": "R",
+   "ENG": "-",
+   "INTAKE": "-",
+   "SALES": "-",
+   "CEO": "R",
+   "ADMIN": "R"
+  },
+  "مالی": {
+   "FIN": "W",
+   "PM": "R",
+   "CEO": "R",
+   "SALES": "R",
+   "PLAN": "-",
+   "ENG": "-",
+   "TRD_IN": "-",
+   "TRD_EX": "-",
+   "INTAKE": "-",
+   "ADMIN": "R"
+  },
+  "فروش": {
+   "SALES": "W",
+   "FIN": "R",
+   "PM": "R",
+   "CEO": "R",
+   "INTAKE": "R",
+   "ENG": "-",
+   "TRD_IN": "-",
+   "TRD_EX": "-",
+   "PLAN": "-",
+   "ADMIN": "R"
+  },
+  "جمع‌بندی": {
+   "PM": "W",
+   "ENG": "R",
+   "TRD_IN": "R",
+   "TRD_EX": "R",
+   "PLAN": "R",
+   "FIN": "R",
+   "SALES": "R",
+   "INTAKE": "-",
+   "CEO": "R",
+   "ADMIN": "R"
+  },
+  "تصویب": {
+   "CEO": "W",
+   "PM": "R",
+   "INTAKE": "-",
+   "ENG": "-",
+   "TRD_IN": "-",
+   "TRD_EX": "-",
+   "PLAN": "-",
+   "FIN": "-",
+   "SALES": "-",
+   "ADMIN": "R"
+  },
+  "هزینه‌واقعی": {
+   "FIN": "W",
+   "PM": "R",
+   "CEO": "R",
+   "ENG": "R",
+   "PLAN": "R",
+   "TRD_IN": "-",
+   "TRD_EX": "-",
+   "SALES": "-",
+   "INTAKE": "-",
+   "ADMIN": "R"
+  },
+  "ریسک": {
+   "PM": "W",
+   "ENG": "R",
+   "TRD_IN": "R",
+   "TRD_EX": "R",
+   "PLAN": "R",
+   "FIN": "R",
+   "SALES": "R",
+   "INTAKE": "R",
+   "CEO": "R",
+   "ADMIN": "R"
+  },
+  "تغییرات": {
+   "PM": "W",
+   "ENG": "R",
+   "TRD_IN": "R",
+   "TRD_EX": "R",
+   "PLAN": "R",
+   "FIN": "R",
+   "SALES": "R",
+   "INTAKE": "R",
+   "CEO": "R",
+   "ADMIN": "R"
+  },
+  "تقویم": {
+   "INTAKE": "R",
+   "PM": "R",
+   "ENG": "R",
+   "TRD_IN": "R",
+   "TRD_EX": "R",
+   "PLAN": "R",
+   "FIN": "R",
+   "SALES": "R",
+   "CEO": "R",
+   "ADMIN": "R"
+  },
+  "تنظیمات": {
+   "INTAKE": "-",
+   "PM": "R",
+   "ENG": "-",
+   "TRD_IN": "-",
+   "TRD_EX": "-",
+   "PLAN": "-",
+   "FIN": "-",
+   "SALES": "-",
+   "CEO": "R",
+   "ADMIN": "W"
+  }
+ },
+ "depts": [
+  [
+   "INTAKE",
+   "01_INTAKE",
+   "Form_INTAKE.xlsx",
+   "B"
+  ],
+  [
+   "ENG",
+   "02_ENG",
+   "Form_ENG.xlsx",
+   "D"
+  ],
+  [
+   "TRD",
+   "03_TRD",
+   "Form_TRD.xlsx",
+   "E,F"
+  ],
+  [
+   "PLAN",
+   "04_PLAN",
+   "Form_PLAN.xlsx",
+   "G"
+  ],
+  [
+   "FIN",
+   "05_FIN",
+   "Form_FIN.xlsx",
+   "H"
+  ],
+  [
+   "SALES",
+   "06_SALES",
+   "Form_SALES.xlsx",
+   "I"
+  ],
+  [
+   "EXEC",
+   "07_EXEC",
+   "Form_EXEC.xlsx",
+   "J"
+  ]
+ ],
+ "dept_tokens": {
+  "INTAKE": "Brn@INTAKE-1405!",
+  "ENG": "Brn@ENG-1405!",
+  "TRD": "Brn@TRD-1405!",
+  "PLAN": "Brn@PLAN-1405!",
+  "FIN": "Brn@FIN-1405!",
+  "SALES": "Brn@SALES-1405!",
+  "EXEC": "Brn@EXEC-1405!"
+ },
+ "grid": {
+  "year": 1405,
+  "days": 365
+ },
+ "cal": {
+  "first_row": 8,
+  "last_row": 2199
+ },
+ "settings": {
+  "u_rows": [
+   14,
+   23
+  ],
+  "hol_rows": [
+   48,
+   87
+  ],
+  "conn": {
+   "hdr": 104,
+   "first": 105,
+   "last": 111
+  }
+ },
+ "list_ranges": {
+  "ListUnits": [
+   90,
+   2,
+   10
+  ],
+  "ListIntake": [
+   91,
+   2,
+   5
+  ],
+  "ListProj": [
+   92,
+   2,
+   6
+  ],
+  "ListDoc": [
+   93,
+   2,
+   5
+  ],
+  "ListRiskSt": [
+   94,
+   2,
+   4
+  ],
+  "ListRiskStr": [
+   95,
+   2,
+   5
+  ],
+  "ListCur": [
+   96,
+   2,
+   4
+  ],
+  "ListPhase": [
+   97,
+   2,
+   7
+  ],
+  "ListChgSt": [
+   98,
+   2,
+   5
+  ],
+  "ListTaskSt": [
+   99,
+   2,
+   6
+  ],
+  "score5": [
+   100,
+   2,
+   6
+  ]
+ },
+ "pwd_user": "Borna@1405",
+ "pwd_structure": "Borna-Admin-1405"
+}
