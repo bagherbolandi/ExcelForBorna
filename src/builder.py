@@ -242,11 +242,17 @@ def build_model():
     _build_issues(wb)
     _build_error_checks(wb)
     _build_test_results(wb)
-    _build_workflow_sheet(wb)
-    _build_dashboard(wb)
     _build_trace(wb)
     _build_report(wb)
     _build_named_ranges_doc(wb, SET)
+
+    # v2.0 — full lifecycle extensions (feasibility, equipment, time study,
+    # receipts, PMO summary, gate status, Gantt, access control) + tab reorder
+    import builder_v2
+    builder_v2.extend(wb, SET)
+    builder_v2.build_workflow_v2(wb)
+    builder_v2.build_dashboard_v2(wb)
+    builder_v2.reorder(wb)
 
     return wb, SET
 
@@ -431,9 +437,11 @@ def _build_purchase_prices(wb):
 def _build_planning(wb, SET):
     h = ["System_ID", "Project_ID", "BOM_Revision_ID", "BOM_Line_ID", "Product_ID", "Material_ID",
          "Make_Buy", "Order_Qty", "Bom_Qty_Per", "Scrap_%", "Required_Qty", "Stock_On_Hand", "Reserved",
-         "Deficit", "Buy_Qty", "Lead_Time_Days", "Supply_Date", "Status_ID", "Create_Date", "Created_By"]
+         "Deficit", "Buy_Qty", "Lead_Time_Days", "Supply_Date", "Status_ID",
+         "Need_Date", "Suggested_Order_Date", "Create_Date", "Created_By"]
     t = TB(wb, "Planning", "tblPlanning", h,
-           note="Required = Bom_Qty × (1+Scrap%) × Order_Qty. Order_Qty زنده از Order_Lines خوانده می‌شود (تغییر مقدار سفارش خودکار منتشر می‌شود).")
+           note="Required = Bom_Qty × (1+Scrap%) × Order_Qty. Order_Qty زنده از Order_Lines خوانده می‌شود. "
+                "Need_Date = زمان‌بندی نیاز به اقلام برای تولید (ورودی برنامه‌ریزی)؛ تاریخ سفارش‌گذاری پیشنهادی = تاریخ نیاز − لیدتایم.")
     seq = 0
     for pl in planning_rows():
         seq += 1
@@ -450,7 +458,10 @@ def _build_planning(wb, SET):
             F(f'=MAX($K{r}-($L{r}-$M{r}),0)'),
             F(f"=$N{r}"),
             15, F(f"=TODAY()+$P{r}"),
-            "Approved", D("2026-10-01"), "USR-05",
+            "Approved",
+            D("2026-11-18"),  # Need_Date — زمان‌بندی نیاز به اقلام جهت تولید (ورودی برنامه‌ریزی)
+            F(f'=IF($S{r}="","",$S{r}-$P{r})'),
+            D("2026-10-01"), "USR-05",
         ])
     t.finish()
 
@@ -529,11 +540,12 @@ def _build_costlining(wb, SET):
     pp = cat_sum("Purchased Parts")
     pk = "0"   # resolved after the Packaging line is added below
 
-    # labour / overhead (auditable: Unit_Cost = hourly rate, Qty = assumed hours)
+    # labour / overhead — نفرساعت به‌صورت زنده از زمان‌سنجی مهندسی (Time_Study) خوانده می‌شود
     r = lt.row + 1
-    lt.add([f"CLI-{cli:06d}", CST, PRJ, "Direct Labor", "", "", 400, "hr",
+    lt.add([f"CLI-{cli:06d}", CST, PRJ, "Direct Labor", "", "",
+                F(f'=SUMIFS(Time_Study!$L$3:$L$20,Time_Study!$B$3:$B$20,$C{r})'), "hr",
                 F(f"={labor_rate}"), F(f"=ROUND($G{r}*$I{r},0)"),
-                "Settings", "ASSUMPTION: 400 ساعت نفر", D("2026-10-05"), "USR-07"])
+                "Time_Study", "نفرساعت از زمان‌سنجی مهندسی × نرخ دستمزد (Settings)", D("2026-10-05"), "USR-07"])
     labor_cells = f"$J${r}"; cli += 1
     r = lt.row + 1
     lt.add([f"CLI-{cli:06d}", CST, PRJ, "Manufacturing Overhead", "", "", 1, "lot",
@@ -780,6 +792,22 @@ def _build_error_checks(wb):
     add("SQ-02", "E-008", "Margin غیرمنطقی", "Warning", "Sales",
         f'=IF(OR(COUNTIF(Sales_Quotation!$G$3:$G$10,"<0")>0,COUNTIF(Sales_Quotation!$G$3:$G$10,">0.35")>0),"WARN","OK")',
         "حاشیه سود منفی یا بالاتر از سقف منطقی است", "بازبینی سناریو")
+    # --- v2.0 gate controls (تقدم و تأخر ورود اطلاعات) ---
+    add("GT-01", "E-022", "گیت: امکان‌سنجی ناقص", "Block", "PMO",
+        f'=IF(COUNTIF(Feasibility!$M$3:$M$20,"INCOMPLETE")>0,"BLOCKED","OK")',
+        "تا امکان‌سنجی کامل نشود، گیت مهندسی برای آن پروژه بسته است", "تکمیل امکان‌سنجی توسط مدیر پروژه")
+    add("GT-02", "E-023", "گیت: تجهیزات قیمت‌دهی‌نشده", "Warning", "Procurement",
+        f'=IF(COUNTIF(Project_Equipment!$N$3:$N$20,"PENDING")>0,"WARN","OK")',
+        "تجهیزاتی وجود دارد که بازرگانی هنوز قیمت آن‌ها را ثبت نکرده است", "قیمت‌دهی در Project_Equipment")
+    add("GT-03", "E-024", "گیت: رسید انبار بدون ردیف برنامه‌ریزی", "Error", "Planning",
+        f'=IF(COUNTIF(Receipts!$C$3:$C$20,"")>0,"ERROR","OK")',
+        "رسید انبار باید به ردیف معتبر برنامه‌ریزی (PLN) متصل باشد", "اصلاح Planning_ID")
+    add("GT-04", "E-025", "گیت: جمع‌بندی گزارش‌نشده به ارشد", "Warning", "PMO",
+        f'=IF(COUNTIF(PMO_Summary!$J$3:$J$10,"NOT REPORTED")>0,"WARN","OK")',
+        "پروژه‌هایی هنوز گزارش جمع‌بندی آن‌ها به مدیریت ارشد اعلام نشده است", "تکمیل PMO_Summary و ثبت تاریخ اعلام")
+    add("GT-05", "E-026", "گیت: زمان‌سنجی ثبت‌نشده برای پروژه در حال مهندسی", "Block", "Engineering",
+        f'=IF(COUNTA(Time_Study!$A$3:$A$20)=0,"BLOCKED","OK")',
+        "بدون زمان‌سنجی، نفرساعت و دستمزد قابل محاسبه نیست", "ثبت عملیات در Time_Study")
     t.finish()
 
 
@@ -804,13 +832,19 @@ def _build_test_results(wb):
         ("T13", "اختلاف بودجه/هزینه", "Actual≠Budget", "Variance مشخص شود", "PENDING", "PENDING", ""),
         ("T14", "Duplicate Order", "Order_ID تکراری", "Error E-018", "PENDING", "PENDING", ""),
         ("T15", "تغییر BOM بعد از Costing", "BOM Revision جدید", "Costing مجدد لازم + نسخه قبل حفظ", "PENDING", "PENDING", ""),
+        ("T16", "گیت امکان‌سنجی", "حذف امتیاز از امکان‌سنجی پروژه", "قفل گیت مهندسی (ورود اطلاعات مهندسی مجاز نیست)", "PENDING", "PENDING", ""),
+        ("T17", "گیت بازرگانی", "پروژه فاقد زنجیره کامل (امکان‌سنجی ناقص)", "تجهیزات پروژه قابل قیمت‌دهی نیست (گیت بازرگانی بسته)", "PENDING", "PENDING", ""),
+        ("T18", "زنجیره نفرساعت", "افزایش زمان استاندارد عملیات در زمان‌سنجی", "دستمزد مستقیم در قیمت تمام‌شده افزایش می‌یابد", "PENDING", "PENDING", ""),
+        ("T19", "نرخ ارز اقلام وارداتی", "تغییر نرخ ارز در Settings", "قیمت ریالی تجهیزات/اقلام وارداتی به‌روز می‌شود", "PENDING", "PENDING", ""),
+        ("T20", "گیت جمع‌بندی/تصمیم", "حذف تاریخ اعلام گزارش به ارشد", "گیت تصمیم مدیریت ارشد بسته می‌شود", "PENDING", "PENDING", ""),
     ]
     for tid, name, inp, exp, act, pf, iss in tests:
-        t.add([tid, name, inp, exp, act, pf, iss, D("2026-09-22"), "USR-09"])
+        t.add([tid, name, inp, exp, act, pf, iss, D("2026-09-23"), "USR-09"])
     t.finish()
 
 
 def _build_workflow_sheet(wb):
+    """DEPRECATED (v2.0): replaced by builder_v2.build_workflow_v2 — kept for reference only."""
     ws = wb.sheet("Workflow")
     ws.set(1, 1, value="Workflow — گردش کار سراسری و گیت‌ها")
     stages = [
@@ -839,6 +873,7 @@ def _build_workflow_sheet(wb):
 
 
 def _build_dashboard(wb):
+    """DEPRECATED (v2.0): replaced by builder_v2.build_dashboard_v2 — kept for reference only."""
     ws = wb.sheet("Dashboard")
     ws.set(1, 1, value="Dashboard — مدیریت فرآیند سفارش تا تصویب قیمت (KPI + Funnel + Timeline)")
     n_ord = len(seed.ORDERS)

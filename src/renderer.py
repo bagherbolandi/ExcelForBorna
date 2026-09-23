@@ -55,6 +55,8 @@ FILL_STRIPE = PatternFill("solid", fgColor=STRIPE)
 # --------------------------------------------------------------------------- #
 def fmt_for(header: str):
     h = header.lower()
+    if any(k in h for k in ("setup_min", "std_min", "man_min")):
+        return "#,##0"
     if any(k in h for k in ("date", "_d", "valid_", "create", "modify", "end_", "start_", "raised")):
         if "days" in h or "lead" in h:
             return "0"
@@ -102,6 +104,12 @@ COLUMN_LISTS = {
     "Severity": ["Low", "Medium", "High", "Critical"],
     "Customer_Type": ["Corporate", "Government", "Distributor", "Retail"],
     "Tax_Status": ["VAT", "Exempt", "N/A"],
+    # v2.0
+    "Origin": ["Domestic", "Imported"],
+    "QC_Status": ["Accepted", "Rejected", "Quarantine"],
+    "Gantt_Updated_Flag": ["Yes", "No"],
+    "Feasibility_Updated_Flag": ["Yes", "No"],
+    "Risk_Level": ["Low", "Medium", "High"],
 }
 
 
@@ -143,13 +151,15 @@ def _attach_validations(ws, sh, name):
 # Main render
 # --------------------------------------------------------------------------- #
 def render(model: WorkbookModel, out_path: str):
+    import renderer_v2
     wb = Workbook()
     wb.remove(wb.active)
+    dashboard_chart_args = None
 
-    # build {header -> validation list} map once
     for name in model.order:
         sh = model.sheets[name]
         ws = wb.create_sheet(title=name[:31])
+        ws.sheet_view.rightToLeft = True   # RTL — Persian UI
 
         # write values/formulas
         for r in sh.rows:
@@ -163,11 +173,33 @@ def render(model: WorkbookModel, out_path: str):
         if sh.max_row() <= 500:
             _style(ws, sh, name)
 
+        # ---- v2.0 gate data validations FIRST (sequencing locks take
+        # precedence where ranges overlap list dropdowns) ----
+        try:
+            renderer_v2.attach_gate_validations(ws, name, sh)
+        except Exception as e:
+            print(f"[warn] gate DV on {name}: {e}")
+
         # ---- data validation dropdowns ----
         try:
             _attach_validations(ws, sh, name)
         except Exception as e:
             print(f"[warn] DV on {name}: {e}")
+
+        # ---- v2.0 Gantt bars ----
+        if name == "Gantt":
+            n_rows = len(seed.SCHEDULE) + 1
+            renderer_v2.finish_gantt(ws, n_rows, first_period_col=10, n_periods=26)
+
+        # ---- v2.0 Dashboard charts (deferred until all sheets exist) ----
+        if name == "Dashboard":
+            marker = None
+            cell = sh.get(1, 26)
+            if cell and isinstance(cell.value, str) and cell.value.startswith("CHART1_ROWS="):
+                marker = cell.value.split("=", 1)[1]
+            if marker:
+                cf, cl = (int(x) for x in marker.split(":"))
+                dashboard_chart_args = (ws, cf, cl)
 
         # ---- tables ----
         for t in sh.tables:
@@ -183,7 +215,15 @@ def render(model: WorkbookModel, out_path: str):
         # freeze
         ws.freeze_panes = sh.freeze
 
+    if dashboard_chart_args is not None:
+        ws, cf, cl = dashboard_chart_args
+        renderer_v2.add_dashboard_charts(ws, wb, cf, cl, len(seed.PROJECTS))
+
+    # ---- v2.0 access control: protect all sheets, then save & inject
+    # password-protected edit ranges (Protected Ranges) per role ----
+    renderer_v2.protect_all(wb)
     wb.save(out_path)
+    renderer_v2.inject_protected_ranges(out_path, model.order)
     return out_path
 
 

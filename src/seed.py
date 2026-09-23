@@ -48,6 +48,7 @@ ROLES = [
     ("ROL-07", "Finance Manager"),
     ("ROL-08", "Senior Management"),
     ("ROL-09", "Admin"),
+    ("ROL-10", "Warehouse Keeper"),
 ]
 
 USERS = [
@@ -60,6 +61,7 @@ USERS = [
     ("USR-06", "Mina T", "DEP-04", "ROL-06", "mina@example.com", 3, 1),
     ("USR-07", "Ali F", "DEP-05", "ROL-07", "ali@example.com", 4, 1),
     ("USR-08", "Borna G", "DEP-07", "ROL-08", "borna@example.com", 5, 1),
+    ("USR-10", "Vahid K", "DEP-03", "ROL-10", "vahid@example.com", 1, 1),
 ]
 
 APPROVAL_MATRIX = [
@@ -451,6 +453,13 @@ SETTINGS = [
     ("Stale_Price_Days", 90, "Number", 0, "آستانه قیمت قدیمی (روز)"),
     ("Max_Margin_Percent", 0.35, "Number", 0, "سقف منطقی مارجین برای E-008"),
     ("Default_Validity_Days", 30, "Number", 0, "اعتبار پیش‌فرض پیشنهاد"),
+    # v2.0 — feasibility weights & gating policy
+    ("Feasibility_Weight_Market", 0.25, "Number", 1, "ASSUMPTION: وزن امتیاز بازار در امکان‌سنجی"),
+    ("Feasibility_Weight_Technical", 0.30, "Number", 1, "ASSUMPTION: وزن امتیاز فنی در امکان‌سنجی"),
+    ("Feasibility_Weight_Economic", 0.30, "Number", 1, "ASSUMPTION: وزن امتیاز اقتصادی در امکان‌سنجی"),
+    ("Feasibility_Weight_Schedule", 0.15, "Number", 1, "ASSUMPTION: وزن امتیاز زمان‌بندی در امکان‌سنجی"),
+    ("Feasibility_Min_Score", 70, "Number", 1, "ASSUMPTION: حداقل امتیاز وزنی برای نتیجه «امکان‌پذیر»"),
+    ("Gate_Enforcement", 1, "Number", 0, "سیاست گیتینگ: 1=اجرای سخت (تا پیش‌نیاز تکمیل نشود، ورود داده در مرحله بعد مسدود است)"),
     # Sequence counters
     ("Seq_Customer", 3, "Number", 0, "شمارنده مشتری"),
     ("Seq_Project", 127, "Number", 0, "شمارنده پروژه"),
@@ -481,4 +490,109 @@ LISTS = [
     ("Issue_Status", "Open,In Progress,Closed"),
     ("Quote_Confirm_Status", "Quoted,Confirmed,Revoked"),
     ("Price_Status", "Approved,Repriced,Expired"),
+]
+
+# =========================================================================== #
+# v2.0 — Project lifecycle extensions
+#   امکان‌سنجی، مرجع تجهیزات، تجهیزات پروژه، زمان‌سنجی/نفرساعت،
+#   رسیدهای انبار، جمع‌بندی مدیریت پروژه، جدول گیت‌ها و کنترل دسترسی
+# =========================================================================== #
+
+FEASIBILITY = [
+    # FEA, project, version, market, technical, economic, schedule, risk(0-100; بالاتر=پرریسک‌تر),
+    # recommendation, status, date, by
+    ("FEA-000125", "PRJ-2026-00125", "R01", 85, 90, 78, 80, 30,
+     "اجرا شود؛ ریسک تأمین مکانیکال سیل با پیش‌خرید و تعهد کتبی تأمین‌کننده مدیریت شود",
+     "Approved", "2026-09-22", "USR-03"),
+    # پروژه دوم: امکان‌سنجی عمداً ناقص است تا قفل گیت‌ها (عدم اجازه ورود به مهندسی) نمایش داده شود
+    ("FEA-000126", "PRJ-2026-00126", "R01", 70, None, None, 65, None,
+     "", "Draft", "2026-09-22", "USR-03"),
+]
+
+EQUIPMENT = [
+    # EQP, code, name, spec, uom, origin(Domestic/Imported), lead days, estimated price, currency, active
+    ("EQP-000001", "EQP-01", "جرثقیل سقفی 5 تن", "DIN 15018 — دهانه 12 متر", "set", "Domestic", 45,
+     8_500_000_000, "IRR", 1),
+    ("EQP-000002", "EQP-02", "دستگاه جوشکاری صنعتی", "Fronius TPS 400i", "pcs", "Imported", 60,
+     4_200, "USD", 1),
+    ("EQP-000003", "EQP-03", "پرس هیدرولیک 100 تن", "قاب چهارستونه — 1000×1000", "pcs", "Domestic", 90,
+     3_000_000_000, "IRR", 1),
+    ("EQP-000004", "EQP-04", "تست‌بنچ پمپ (ادوات دقیق)", "فلومتر تا 300 m3/h + درایو VFD", "set", "Imported", 75,
+     12_000, "USD", 1),
+]
+
+PROJECT_EQUIPMENT = [
+    # PEQ, project, equipment, qty, need date, eng notes,
+    # quote price (None = هنوز قیمت‌دهی نشده), currency, transport, installation, status, date, by
+    ("PEQ-000001", "PRJ-2026-00125", "EQP-000004", 1, "2026-11-25",
+     "تست عملکردی پمپ‌ها قبل از تحویل — شامل نصب در سایت تست",
+     12_500, "USD", 150_000_000, 80_000_000, "Priced", "2026-10-02", "USR-06"),
+    ("PEQ-000002", "PRJ-2026-00125", "EQP-000001", 1, "2026-11-20",
+     "جابجایی پوسته‌ها در سالن مونتاژ",
+     8_900_000_000, "IRR", 200_000_000, 120_000_000, "Priced", "2026-10-02", "USR-06"),
+    # ردیف پروژه دوم: تا تکمیل زنجیره گیت‌ها (مهندسی) بازرگانی مجاز به قیمت‌دهی نیست
+    ("PEQ-000003", "PRJ-2026-00126", "EQP-000002", 2, "2027-01-10",
+     "جوشکاری بدنه — در انتظار تکمیل مهندسی",
+     None, "", None, None, "Pending", "2026-09-23", "USR-04"),
+]
+
+TIME_STUDY = [
+    # TST, project, product, operation, work center, setup min, std min/unit, operators, scrap allowance
+    ("TST-000001", "PRJ-2026-00125", "PRD-000125", "برش و آماده‌سازی مواد اولیه", "WC-CUT", 240, 900, 2, 0.02),
+    ("TST-000002", "PRJ-2026-00125", "PRD-000125", "ماشین‌کاری پوسته (CNC)", "WC-CNC", 480, 2400, 1, 0.02),
+    ("TST-000003", "PRJ-2026-00125", "PRD-000125", "ماشین‌کاری پروانه و بالانس استاتیک", "WC-CNC", 240, 1200, 1, 0.02),
+    ("TST-000004", "PRJ-2026-00125", "PRD-000125", "مونتاژ عمومی و بالانس دینامیک", "WC-ASM", 360, 2700, 2, 0.02),
+    ("TST-000005", "PRJ-2026-00125", "PRD-000125", "تست عملکردی نهایی و کنترل کیفیت", "WC-QC", 60, 60, 1, 0.02),
+]
+
+RECEIPTS = [
+    # RCV, planning line, receipt date, qty received, received by, QC status, date, by
+    ("RCV-000001", "PLN-000001", "2026-10-18", 400, "USR-10", "Accepted", "2026-10-18", "USR-10"),
+    ("RCV-000002", "PLN-000004", "2026-10-25", 2, "USR-10", "Accepted", "2026-10-25", "USR-10"),
+]
+
+PMO_SUMMARY = [
+    # PMO, project, performance summary, gantt updated, feasibility updated, report date, date, by
+    ("PMO-000125", "PRJ-2026-00125",
+     "عملکرد واحدها مطابق برنامه: مهندسی و بازرگانی به‌موقع؛ برنامه‌ریزی تولید زمان‌بندی نیاز اقلام را صادر کرد؛ "
+     "مالی قیمت تمام‌شده و بودجه راه‌اندازی را تدوین نمود. ریسک باقیمانده: تأمین مکانیکال سیل (پایش هفتگی).",
+     "Yes", "Yes", "2026-10-06", "2026-10-06", "USR-03"),
+    ("PMO-000126", "PRJ-2026-00126", "", "", "", None, "2026-09-23", "USR-03"),
+]
+
+# --------------------------------------------------------------------------- #
+# Access control — نقش‌ها، مالکیت شیت‌ها و گذرواژه «محدوده‌های مجاز ویرایش»
+# (در فایل نهایی به‌صورت Protected Range با گذرواژه اعمال می‌شود)
+# --------------------------------------------------------------------------- #
+ADMIN_PASSWORD = "راهبر1404"
+
+ACCESS_ROLES = [
+    # Role_ID, Role_Name, Department, Password, Scope (owned inputs), Notes
+    ("ROL-02", "Sales (فروش)", "DEP-01", "فروش1404",
+     "Orders (ثبت و بررسی سفارش) | Sales_Quotation (قیمت نهایی/حاشیه) | Payment_Terms (نحوه پرداخت)",
+     "فقط ورودی‌های واحد فروش؛ مشاهده همه شیت‌ها آزاد است"),
+    ("ROL-03", "Project Manager (مدیر پروژه)", "DEP-06", "مدیر1404",
+     "Projects | Feasibility | Schedule | Gantt | PMO_Summary",
+     "مشاهده همه بخش‌ها آزاد؛ ویرایش فقط در بخش‌های خود (تعریف پروژه، امکان‌سنجی، گانت، جمع‌بندی)"),
+    ("ROL-04", "Engineering (مهندسی)", "DEP-02", "مهندسی1404",
+     "Engineering | BOM_Header | BOM_Detail | Materials | Equipment | Project_Equipment (بخش مهندسی) | Time_Study",
+     "تهیه لیست اقلام/تجهیزات، زمان‌سنجی و نفرساعت؛ نگهداری لیست‌های مرجع"),
+    ("ROL-06", "Commercial (بازرگانی)", "DEP-04", "بازرگانی1404",
+     "Supplier_Quotes | Supplier_Quote_Lines | Procurement | Purchase_Prices | Project_Equipment (بخش قیمت‌دهی)",
+     "قیمت‌دهی اقلامِ فهرست مهندسی + نرخ ارز برای اقلام وارداتی"),
+    ("ROL-05", "Planning (برنامه‌ریزی تولید و انبارها)", "DEP-03", "برنامه1404",
+     "Planning (تاریخ نیاز/وضعیت تأمین) | Inventory",
+     "مقدار مورد نیاز از مهندسی (BOM) محاسبه می‌شود؛ برنامه‌ریزی زمان‌بندی نیاز را ثبت می‌کند"),
+    ("ROL-10", "Warehouse (انبار)", "DEP-03", "انبار1404",
+     "Receipts (رسیدهای انبار) | Inventory (موجودی)",
+     "ثبت رسید اقلام و نگهداری موجودی"),
+    ("ROL-07", "Finance (مالی)", "DEP-05", "مالی1404",
+     "Cost_Lines | Costing | Budget",
+     "قیمت تمام‌شده محصول + تدوین بودجه راه‌اندازی"),
+    ("ROL-08", "Senior Management (مدیریت ارشد)", "DEP-07", "ارشد1404",
+     "Management_Approval (تصمیم نهایی: تأیید / رد / برگشت برای اصلاح)",
+     "فقط ثبت تصمیم؛ سایر بخش‌ها صرفاً قابل مشاهده"),
+    ("ROL-09", "Admin (راهبر)", "—", ADMIN_PASSWORD,
+     "باز/بستن محافظت شیت‌ها و تغییر گذرواژه‌ها",
+     "گذرواژه محافظت شیت‌ها؛ در اختیار مدیر سیستم"),
 ]

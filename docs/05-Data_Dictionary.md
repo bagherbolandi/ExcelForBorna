@@ -59,3 +59,18 @@
 
 ## شیت‌های نمایش
 Dashboard (KPI + Funnel + Timeline)، Workflow (گردش کار)، _Trace (Drill-down)، Report_Quotation (گزارش اجرایی)، _NamedRanges (مستند Named Ranges).
+
+## شیت‌های نسخه 2.0
+
+| شیت | ستون‌ها |
+|---|---|
+| Feasibility | System_ID, Project_ID, Version, Market_Score, Technical_Score, Economic_Score, Schedule_Score, Risk_Score, Weighted_Score(calc), Risk_Level(calc), Feasibility_Result(calc), Go_NoGo_Recommendation, Completed_Flag(calc), Status_ID, Create_Date, Created_By |
+| Equipment | System_ID, Equipment_Code, Equipment_Name, Specification, UoM, Origin(Domestic/Imported), Lead_Time_Days, Estimated_Price, Currency, Is_Active |
+| Project_Equipment | System_ID, Project_ID, Equipment_ID, Qty, Need_Date, Engineering_Notes, Unit_Price_Quote, Currency, Fx_Rate(calc), Unit_Price_IRR(calc), Transport_Cost, Installation_Cost, Total_Cost_IRR(calc), Priced_Flag(calc), Status_ID, Create_Date, Created_By |
+| Time_Study | System_ID, Project_ID, Product_ID, Operation, Work_Center, Setup_Min, Std_Min_Per_Unit, Operators, Scrap_Allowance_%, Order_Qty(calc), Man_Min_Total(calc), Man_Hours_Total(calc), Man_Hours_Per_Unit(calc), Status_ID, Create_Date, Created_By |
+| Receipts | System_ID, Planning_ID, Project_ID(calc), Material_ID(calc), Receipt_Date, Qty_Received, Received_By, QC_Status, Create_Date, Created_By |
+| PMO_Summary | System_ID, Project_ID, Units_Completed(calc), Completion_Percent(calc), Performance_Summary, Gantt_Updated_Flag, Feasibility_Updated_Flag, Report_Date, Decision(calc), Reported_Flag(calc), Next_Action(calc), Create_Date, Created_By |
+| Gate_Status | System_ID, Project_ID(calc), Order_ID(calc), S1..S8 flags(calc), Decision_Recorded(calc), Decision_Text(calc), G_PM..G_Senior gates(calc), Stages_Completed(calc), Completion_Percent(calc), Current_Stage(calc) + سلول‌های ردیف ۱: Any_G_Eng/Any_G_Com/Any_G_Pln |
+| Gantt | System_ID..Display_Status (همه از Schedule خوانده می‌شوند) + ۲۶ ستون دوره هفتگی با فرمول میله (1/0) و فرمت شرطی رنگ وضعیت |
+| Access_Control | Role_ID, Role_Name, Department_ID, Edit_Password, Scope, Notes |
+| Planning (افزوده) | Need_Date (زمان‌بندی نیاز به اقلام — ورودی برنامه‌ریزی)، Suggested_Order_Date = Need_Date − Lead_Time_Days (calc) |

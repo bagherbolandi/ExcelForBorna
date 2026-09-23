@@ -104,6 +104,13 @@ def run_all():
     # ---- T15: BOM change after costing
     results.append(("T15", _t15_bom_after_costing(snapshot(base))))
 
+    # ---- v2.0 lifecycle / gating tests
+    results.append(("T16", _t16_feasibility_gate(snapshot(base))))
+    results.append(("T17", _t17_commercial_gate(snapshot(base))))
+    results.append(("T18", _t18_manhour_chain(snapshot(base))))
+    results.append(("T19", _t19_fx_imported(snapshot(base))))
+    results.append(("T20", _t20_pmo_decision_gate(snapshot(base))))
+
     return results
 
 
@@ -340,6 +347,102 @@ def _t15_bom_after_costing(model):
                 pass_fail="PASS" if ok else "FAIL", issue="" if ok else "")
 
 
+# =========================================================================== #
+# v2.0 — lifecycle / gating tests (T16–T20)
+# These prove "تقدم و تأخر ورود اطلاعات": a downstream stage is locked until
+# the upstream stage's data is complete (Gate_Status cumulative gates).
+# =========================================================================== #
+def _t16_feasibility_gate(model):
+    # complete feasibility → engineering gate open; remove one score → gate locks
+    state, _ = _evaluate(snapshot(model))
+    open_before = num(_cell_val(state, "Gate_Status", 3, 15))  # G_Eng PRJ-001 (col O)
+    sh = model.sheets["Feasibility"]
+    sh.get(3, 5).value = None        # blank Technical_Score of FEA-000125
+    state2, _ = _evaluate(model)
+    feas_flag = num(_cell_val(state2, "Gate_Status", 3, 5))    # S2
+    eng_gate = num(_cell_val(state2, "Gate_Status", 3, 15))    # G_Eng
+    com_gate = num(_cell_val(state2, "Gate_Status", 3, 16))    # G_Com (downstream too)
+    ok = (open_before == 1 and feas_flag == 0 and eng_gate == 0 and com_gate == 0)
+    return dict(input="حذف امتیاز فنی از امکان‌سنجی",
+                expected="S2=0 و قفل گیت مهندسی و همه گیت‌های بعدی",
+                actual=f"before G_Eng={open_before}, after S2={feas_flag} G_Eng={eng_gate} G_Com={com_gate}",
+                pass_fail="PASS" if ok else "FAIL",
+                issue="" if ok else "گیت‌ها باید با ناقص‌شدن امکان‌سنجی بسته شوند")
+
+
+def _t17_commercial_gate(model):
+    # PRJ-002 has an incomplete feasibility → commercial gate must be locked,
+    # so its equipment line stays PENDING (commercial may not price it).
+    state, _ = _evaluate(model)
+    g_com2 = num(_cell_val(state, "Gate_Status", 4, 16))   # G_Com PRJ-002 (col P, row 4)
+    peq_flag = None
+    sh = model.sheets["Project_Equipment"]
+    for r, row in sh.rows.items():
+        if row.get(1) and row[1].value == "PEQ-000003":
+            peq_flag = _cell_val(state, "Project_Equipment", r, 14)  # Priced_Flag col N
+    ok = (g_com2 == 0 and peq_flag == "PENDING")
+    return dict(input="پروژه بدون امکان‌سنجی کامل (PRJ-002)",
+                expected="G_Com=0 و تجهیزات آن غیرقابل قیمت‌دهی (PENDING)",
+                actual=f"G_Com={g_com2}, PEQ-000003={peq_flag}",
+                pass_fail="PASS" if ok else "FAIL",
+                issue="" if ok else "بازرگانی نباید قبل از گیت مجاز به قیمت‌دهی باشد")
+
+
+def _t18_manhour_chain(model):
+    # raising std time in Time_Study must flow into Costing direct labor
+    state, _ = _evaluate(snapshot(model))
+    labor_before = num(_cell_val(state, "Costing", 3, 9))  # Direct_Labor col I
+    ts = model.sheets["Time_Study"]
+    c = ts.get(3, 7)                    # Std_Min_Per_Unit of first operation
+    c.value = c.value + 60
+    state2, _ = _evaluate(model)
+    labor_after = num(_cell_val(state2, "Costing", 3, 9))
+    delta = (labor_after or 0) - (labor_before or 0)
+    ok = (labor_before is not None and labor_after is not None and delta > 0
+          and abs(delta - round(60 * 2 * 1.02 / 60 * 2) * 2_500_000) < 2_500_000)
+    return dict(input="+60 دقیقه زمان استاندارد در زمان‌سنجی",
+                expected="افزایش دستمزد مستقیم در قیمت تمام‌شده",
+                actual=f"Labor {labor_before:,.0f} → {labor_after:,.0f} (Δ={delta:,.0f})",
+                pass_fail="PASS" if ok else "FAIL",
+                issue="" if ok else "زنجیره نفرساعت→دستمزد باید زنده باشد")
+
+
+def _t19_fx_imported(model):
+    # FX change must revalue imported equipment (and USD materials via PPR fx col is fixed;
+    # Project_Equipment reads the rate live from Settings)
+    state, _ = _evaluate(snapshot(model))
+    irr_before = num(_cell_val(state, "Project_Equipment", 3, 10))  # Unit_Price_IRR col J
+    st = model.sheets["Settings"]
+    for r, row in st.rows.items():
+        if row.get(1) and row[1].value == "Fx_USD_TO_IRR":
+            row[2].value = 600000
+    state2, _ = _evaluate(model)
+    irr_after = num(_cell_val(state2, "Project_Equipment", 3, 10))
+    ok = (irr_before == 12_500 * 500000 and irr_after == 12_500 * 600000)
+    return dict(input="نرخ ارز 500,000 → 600,000",
+                expected="قیمت ریالی تجهیز وارداتی به‌روز شود",
+                actual=f"{irr_before:,.0f} → {irr_after:,.0f}",
+                pass_fail="PASS" if ok else "FAIL",
+                issue="" if ok else "اقلام وارداتی باید با نرخ ارز زنده باشند")
+
+
+def _t20_pmo_decision_gate(model):
+    # removing the report date closes S8 → G_Senior (decision gate) must lock
+    state, _ = _evaluate(snapshot(model))
+    senior_before = num(_cell_val(state, "Gate_Status", 3, 21))  # G_Senior col U
+    pmo = model.sheets["PMO_Summary"]
+    pmo.get(3, 8).value = None          # blank Report_Date
+    state2, _ = _evaluate(model)
+    s8 = num(_cell_val(state2, "Gate_Status", 3, 11))        # S8_PMO_Summary col K
+    senior_after = num(_cell_val(state2, "Gate_Status", 3, 21))
+    ok = (senior_before == 1 and s8 == 0 and senior_after == 0)
+    return dict(input="حذف تاریخ اعلام گزارش به ارشد",
+                expected="بسته‌شدن گیت تصمیم مدیریت ارشد",
+                actual=f"before G_Senior={senior_before}, after S8={s8} G_Senior={senior_after}",
+                pass_fail="PASS" if ok else "FAIL",
+                issue="" if ok else "بدون گزارش، تصمیم ارشد نباید مجاز باشد")
+
+
 # --------------------------------------------------------------------------- #
 # Patch Test_Results table in the model
 # --------------------------------------------------------------------------- #
@@ -358,7 +461,7 @@ def patch_test_results(model, results):
         row[5].value = f["actual"]
         row[6].value = f["pass_fail"]
         row[7].value = f["issue"]
-        row[8].value = dt.date(2026, 9, 22)
+        row[8].value = dt.date(2026, 9, 23)
         row[9].value = "USR-09"
     return model
 

@@ -91,3 +91,41 @@ Fin_Cost_Amount = (Credit_Portion × مبلغ) × (Fin_Cost_Rate_Annual × Credi
 
 ## 6.9 کنترل گرد کردن
 گرد کردن فقط برای نمایش (فرمت عددی) و در مرحله نهایی «قیمت پیشنهادی» با ROUND انجام می‌شود؛ جمع‌های میانی گرد نمی‌شوند تا Audit دقیق بماند.
+
+## 6.10 فرمول‌های نسخه 2.0
+
+**نفرساعت (Time_Study):**
+```
+Order_Qty        = SUMIFS(Order_Lines.Qty; Order; XLOOKUP(Project→Order); Product; Product)
+Man_Min_Total    = Setup_Min + Std_Min_Per_Unit × Order_Qty × (1 + Scrap_Allowance)
+Man_Hours_Total  = ROUND(Man_Min_Total / 60 × Operators, 2)
+```
+
+**دستمزد در قیمت تمام‌شده (زنده از زمان‌سنجی):**
+```
+Cost_Lines[Direct Labor].Qty   = SUMIFS(Time_Study.Man_Hours_Total; Project)
+Cost_Lines[Direct Labor].Amount= ROUND(Qty × Settings.Labor_Rate_Per_Hour)
+```
+
+**تجهیزات وارداتی:**
+```
+Fx_Rate          = IF(Currency="IRR", 1, Settings.Fx_USD_TO_IRR)
+Unit_Price_IRR   = ROUND(Unit_Price_Quote × Fx_Rate)
+Total_Cost_IRR   = Unit_Price_IRR × Qty + Transport + Installation
+```
+
+**امکان‌سنجی:**
+```
+Weighted = Σ وزن_بُعد × امتیاز_بُعد   (وزن‌ها و کف قبولی از Settings)
+Result   = Feasible اگر Weighted ≥ کف و ریسک بالا نباشد؛ وگرنه Conditional / Not Feasible
+```
+
+**گیت‌های تجمعی (نمونه):**
+```
+G_Eng = S1 × S2            (ورود مهندسی)
+G_Com = G_Eng × S3         (ورود بازرگانی)
+… و به همین ترتیب تا G_Senior = G_PMO × S8
+```
+این گیت‌ها مستقیماً در Data Validation سفارشی سلول‌های ورودی استفاده می‌شوند
+(مسیر: `INDEX(Gate_Status!ستون_گیت; MATCH(پروژه))=1`)، بنابراین ورود اطلاعات
+مرحله بعد تا تکمیل مرحله قبل توسط خود اکسل رد می‌شود.

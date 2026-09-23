@@ -140,3 +140,13 @@ Quotation_Version.Netting_Price
 `Dashboard, Workflow, _Trace, Report_Quotation, _NamedRanges(مستند)`
 
 جمعاً ~۴۰ شیت؛ ترکیب دقیق در سند 04 (Workbook Architecture) با ستون‌های هر جدول در سند Data Dictionary (05).
+
+## موجودیت‌های نسخه 2.0 و روابط کلیدی
+
+- `Feasibility 1—1 Project` — بدون `Completed_Flag=COMPLETE` گیت مهندسی بسته می‌ماند.
+- `Equipment 1—* Project_Equipment *—1 Project` — لیست مرجع تجهیزات؛ انتخاب با مهندسی، قیمت‌دهی با بازرگانی.
+- `Time_Study *—1 Project (+Product)` — `Man_Hours_Total` با `SUMIFS` مستقیم به `Cost_Lines` (دستمزد) می‌رود.
+- `Receipts *—1 Planning_Line` — رسید انبار به ردیف نیاز متصل است؛ پروژه/آیتم با `XLOOKUP` استخراج می‌شود.
+- `PMO_Summary 1—1 Project` — جمع‌بندی + اعلام به ارشد؛ `Gate_Status` را تغذیه می‌کند.
+- `Gate_Status` — موجودیت محاسباتی (بدون ورودی)؛ هر پرچم/گیت فرمول زنده است و مبنای `Dashboard` و Data Validationهای مسدودکننده قرار می‌گیرد.
+- `Schedule → Gantt` — رابطه فقط‌خواندنی برای رندر بصری.

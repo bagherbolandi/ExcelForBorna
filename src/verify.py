@@ -51,41 +51,55 @@ def _start_ref(f):
     return f
 
 
-def evaluate_all(model):
-    """Return sheet -> A1 -> value (formula errors surfaced as FormulaError)."""
+def _same(a, b):
+    """Value equality for fixpoint detection (FormulaError compared by text)."""
+    if isinstance(a, FormulaError) or isinstance(b, FormulaError):
+        va = getattr(a, "value", a)
+        vb = getattr(b, "value", b)
+        return va == vb
+    if isinstance(a, bool) != isinstance(b, bool):
+        return False
+    return a == b
+
+
+def evaluate_all(model, max_passes=40):
+    """Return sheet -> A1 -> value (formula errors surfaced as FormulaError).
+
+    Fixpoint (Jacobi) evaluation: each pass evaluates every formula against a
+    snapshot of the state; passes repeat until no cell changes. This makes the
+    result independent of sheet/tab ordering (sheets may cross-reference in
+    both directions at the cell level — e.g. Gate_Status ↔ PMO_Summary).
+    """
     flat = build_flat(model)
     state = {}
-    pending = {}
+    formulas = []
     for sheet, cells in flat.items():
         state[sheet] = {}
         for ref, (kind, val) in cells.items():
             if kind == "lit":
                 state[sheet][ref] = val
             else:
-                pending[(sheet, ref)] = val
+                formulas.append((sheet, ref, val))
 
-    # iterate until no progress
-    max_passes = len(pending) + 5
     for _ in range(max_passes):
-        if not pending:
-            break
-        progressed = False
-        for key in list(pending.keys()):
-            sheet, ref = key
-            formula = pending[key]
+        book = Book()
+        for sname, cells in state.items():
+            grid = Grid(sname)
+            for ref, v in cells.items():
+                grid.set(ref, v)
+            book.add(grid)
+        changed = False
+        for sheet, ref, formula in formulas:
             try:
-                v = evaluate_referencing(state, sheet, formula)
+                v = evaluate(book, sheet, formula)
             except FormulaError as e:
                 v = e
-            state[sheet][ref] = v
-            del pending[key]
-            progressed = True
-        if not progressed:
+            if not _same(state[sheet].get(ref), v):
+                state[sheet][ref] = v
+                changed = True
+        if not changed:
             break
-    # any remaining (unresolvable) → try once more
-    for (sheet, ref), formula in list(pending.items()):
-        state[sheet][ref] = FormulaError("#UNRESOLVED")
-    return state, pending
+    return state, {}
 
 
 def evaluate_referencing(state, sheet, formula):
@@ -141,8 +155,10 @@ def expectations():
             dm += pl["required"] * landed[pl["material"]]
         else:
             pp += pl["required"] * landed[pl["material"]]
-    labor = 400 * 2_500_000           # ASSUMPTION settings
-    oh = labor * 2.0                  # overhead rate 2.0
+    # v2.0 — labour comes from the engineering Time_Study (نفرساعت), not an assumption
+    hours = time_study_hours()
+    labor = round(hours * 2_500_000)   # ASSUMPTION settings: labor rate
+    oh = round(labor * 2.0)            # overhead rate 2.0 × direct labor
     scrap = (dm + pp) * 0.02
     packaging = 2 * 12_000_000        # 2 pcs
     logistics = 150_000_000
@@ -156,13 +172,38 @@ def expectations():
     financial = round((1 - 0.30 - 0.10) * total_cost * 0.18 * (60 / 360))
     proposed = round(total_cost + margin + 10_000_000 + 15_000_000 + financial)
 
+    # v2.0 — project equipment (FX conversion for imported items)
+    peq_total_imported = round(12_500 * fx) * 1 + 150_000_000 + 80_000_000
+    peq_total_domestic = 8_900_000_000 * 1 + 200_000_000 + 120_000_000
+
     return dict(
         fx=fx, landed=landed, planning=planning,
-        dm=dm, pp=pp, labor=labor, oh=oh, scrap=scrap, packaging=packaging,
+        dm=dm, pp=pp, hours=hours, labor=labor, oh=oh, scrap=scrap, packaging=packaging,
         logistics=logistics, tooling=tooling, sga=sga, total_cost=total_cost,
         cost_per_unit=cost_per_unit, margin=margin, financial=financial,
         proposed=proposed,
+        peq_total_imported=peq_total_imported, peq_total_domestic=peq_total_domestic,
     )
+
+
+def time_study_hours():
+    """Total man-hours for PRJ-2026-00125 as the Time_Study formulas compute them.
+
+    Per row: Man_Min = Setup + Std×Order_Qty×(1+ScrapAllow); Hours = ROUND(Man_Min/60×Operators, 2)
+    Order_Qty = 2 (OLN qty of PRD-000125 on ORD-2026-00321).
+    """
+    order_qty = 0
+    for oln in seed.ORDER_LINES:
+        if oln[1] == "ORD-2026-00321" and oln[3] == "PRD-000125":
+            order_qty += float(oln[4])
+    total = 0.0
+    for ts in seed.TIME_STUDY:
+        if ts[1] != "PRJ-2026-00125":
+            continue
+        setup, std, ops, scrap = ts[5], ts[6], ts[7], ts[8]
+        man_min = setup + std * order_qty * (1 + scrap)
+        total += round(man_min / 60 * ops, 2)
+    return total
 
 
 def planner_rows():
@@ -248,15 +289,55 @@ def run(model):
     print("\n--- Dashboard spot checks ---")
     for label, ref in [("Active projects", "B3"), ("New orders", "B4"),
                        ("In sales review", "B5"), ("Overdue projects", "B6"),
-                       ("Expired prices", "B8"), ("Pending mgmt quotes", "B10"),
-                       ("Total Sales Value", "B15"), ("Total Cost", "B16"),
-                       ("Gross Margin", "B17")]:
+                       ("Feasibility complete", "B7"), ("Equipment priced", "B9"),
+                       ("Receipts qty", "B11"), ("Expired prices", "B13"),
+                       ("Pending mgmt quotes", "B14"),
+                       ("Total Sales Value", "B19"), ("Total Cost", "B20")]:
         print(f"  {label:22s} = {g('Dashboard', ref)!r}")
+    # workflow matrix (row 34 = PRJ-001, row 35 = PRJ-002) — engine-verified
+    m1 = [g("Dashboard", f"{c}34") for c in "BCDEFGHIJ"]
+    m2 = [g("Dashboard", f"{c}35") for c in "BCDEFGHIJ"]
+    print(f"  matrix PRJ-001 = {m1}")
+    print(f"  matrix PRJ-002 = {m2}")
+    if m1 != ["✅ تکمیل"] * 8 + ["✅ تکمیل"]:
+        problems.append("Dashboard matrix PRJ-001 should be fully complete")
+    if m2[0] != "✅ تکمیل" or m2[1] != "🔵 در جریان" or any(x != "🔒 قفل" for x in m2[2:]):
+        problems.append("Dashboard matrix PRJ-002 should be locked after feasibility stage")
 
-    # engine enforces blanks-as-0; timeline cells use native Excel array
-    # XLOOKUP which the reduced engine can't run — they are surface-only.
-    print("\n  (Timeline cells use native Excel array-XLOOKUP — verified visually in Excel,)")
-    print("   not by the reduced engine. All KPI/funnel cells above are engine-verified.)")
+    # 7. v2.0 lifecycle — gates, feasibility, time study, equipment, PMO
+    print("\n--- v2.0 lifecycle (gates & sequencing) ---")
+    stage_cols = ["D", "E", "F", "G", "H", "I", "J", "K"]
+    prj1_flags = [num(g("Gate_Status", f"{c}3")) for c in stage_cols]
+    prj2_flags = [num(g("Gate_Status", f"{c}4")) for c in stage_cols]
+    print(f"  PRJ-001 stage flags = {prj1_flags}")
+    print(f"  PRJ-002 stage flags = {prj2_flags}")
+    if prj1_flags != [1.0] * 8:
+        problems.append("PRJ-001: all 8 stages should be complete")
+    if prj2_flags != [1.0] + [0.0] * 7:
+        problems.append("PRJ-002: only sales stage should be complete (feasibility incomplete)")
+    check("Gate_Status.P1 Stages_Completed", g("Gate_Status", "V3"), 8)
+    check("Gate_Status.P1 G_Senior", g("Gate_Status", "U3"), 1)
+    check("Gate_Status.P2 G_Eng (must be locked)", g("Gate_Status", "O4"), 0)
+    check("Gate_Status.P2 G_Com (must be locked)", g("Gate_Status", "P4"), 0)
+    if g("Gate_Status", "M3") != "APPROVED WITH CONDITION":
+        problems.append("PRJ-001 decision text mismatch")
+    if g("Gate_Status", "X4") != "تعریف پروژه و امکان‌سنجی (مدیر پروژه)":
+        problems.append("PRJ-002 current stage should be feasibility")
+
+    print("\n--- v2.0 feasibility / time study / equipment ---")
+    check("Feasibility.Weighted(P1)", g("Feasibility", "I3"), 83.65, tol=0.01)
+    if g("Feasibility", "K3") != "Feasible" or g("Feasibility", "M3") != "COMPLETE":
+        problems.append("Feasibility P1 result/flag mismatch")
+    if g("Feasibility", "M4") != "INCOMPLETE":
+        problems.append("Feasibility P2 must be INCOMPLETE")
+    check("Time_Study.hours→Costing.Direct_Labor", g("Costing", "I3"), exp["labor"])
+    check("Project_Equipment.total(imported, FX)", g("Project_Equipment", "M3"), exp["peq_total_imported"])
+    check("Project_Equipment.total(domestic)", g("Project_Equipment", "M4"), exp["peq_total_domestic"])
+    if g("Project_Equipment", "N5") != "PENDING":
+        problems.append("PEQ-000003 must remain PENDING until commercial gate opens")
+    check("PMO_Summary.Units_Completed", g("PMO_Summary", "C3"), 8)
+    if g("PMO_Summary", "J3") != "REPORTED":
+        problems.append("PMO summary P1 must be REPORTED")
 
     # Summary
     print("\n" + "=" * 78)
