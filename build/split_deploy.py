@@ -210,6 +210,38 @@ def main():
         # structure lock with dept token (dept cannot unhide snapshots)
         dwb.security = WorkbookProtection(lockStructure=True, workbookPassword=TOKENS[dk])
         dwb.active = 0
+        # self-explaining banner on راهنما (unit file ≠ master file)
+        DEPT_FA = {"INTAKE": "دریافت و بازارسنجی", "ENG": "مهندسی", "TRD": "تدارکات و بازرگانی",
+                   "PLAN": "برنامه‌ریزی و انبار", "FIN": "مالی", "SALES": "فروش", "EXEC": "دفتر مدیرعامل"}
+        if "راهنما" in dwb.sheetnames:
+            from openpyxl.styles import Font as _F, PatternFill as _PF, Alignment as _AL
+            gh = dwb["راهنما"]
+            try:
+                if not any(str(m) == "A1:J1" for m in gh.merged_cells.ranges):
+                    gh.merge_cells("A1:J1")
+            except Exception:
+                pass
+            gh["A1"] = (f"فرم واحد «{DEPT_FA.get(dk, dk)}» — سامانه مدیریت پروژه برنا "
+                        f"(فایلِ واحد؛ ۱۹ شیت کامل در فایل مادر نزد PMO است)")
+            gh["A1"].font = _F(name="Tahoma", size=13, bold=True, color="FFFFFFFF")
+            gh["A1"].fill = _PF("solid", fgColor="FF2F5597")
+            gh["A1"].alignment = _AL(wrap_text=True, horizontal="right", vertical="center")
+            gh.row_dimensions[1].height = 30
+            a2 = next((m for m in gh.merged_cells.ranges if str(m).startswith("A2")), None)
+            try:
+                if a2:
+                    gh.unmerge_cells(str(a2))
+                gh.merge_cells("A2:J2")
+            except Exception:
+                pass
+            gh["A2"] = ("این فایل مخصوص کارکنان همین واحد است؛ شیت‌های فعال: «" + "»، «".join(input_sheets) +
+                         "». بقیهٔ شیت‌ها مخفی‌اند و فقط دادهٔ تازه‌سازی‌شدهٔ واحدهای بالادستی را برای محاسبه نگه "
+                         "می‌دارند — این محدودسازی عمدی دسترسی است، نه نقص فایل. پس از تکمیل سلول‌های زرد، فایل را "
+                         "ذخیره کنید؛ مدیر پروژه با Borna_Collect/Publish داده‌ها را ادغام و اسنپ‌شات‌ها را تازه می‌کند.")
+            gh["A2"].font = _F(name="Tahoma", size=10, bold=True, color="FF833C00")
+            gh["A2"].fill = _PF("solid", fgColor="FFFFF2CC")
+            gh["A2"].alignment = _AL(wrap_text=True, horizontal="right", vertical="center")
+            gh.row_dimensions[2].height = 46
         out_dir = os.path.join(args.out, folder)
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, dfile)
