@@ -1,0 +1,5 @@
+# build environment (used by build/build_workbook.py and build/check_workbook.py)
+openpyxl>=3.1
+jdatetime>=5.0
+# optional — headless formula evaluation used in QA (not required at runtime):
+formulas>=1.2
